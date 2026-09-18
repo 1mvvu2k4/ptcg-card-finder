@@ -530,6 +530,7 @@
     }
 
     .modal-scroll { max-height: calc(88vh - 69px); overflow: auto; }
+    .detail-loading { padding: 26px; color: var(--muted); }
 
     .modal-grid {
       display: grid;
@@ -779,7 +780,7 @@
     (async () => {
       'use strict';
 
-      const response = await fetch('cards-data.json?v=a0f70e380321');
+      const response = await fetch('cards-index.json?v=5dfbcd6c9c9f');
       if (!response.ok) throw new Error(`Card data request failed: ${response.status}`);
       const pack = await response.json();
       const fields = pack.fields;
@@ -814,7 +815,7 @@
         const skills = get(row, 'skills_json');
         const skillText = Array.isArray(skills)
           ? skills.flatMap(skill => [skill.section, skill.name, ...(skill.cost || []), skill.damage, skill.effect]).join(' ')
-          : '';
+          : String(skills || '');
         card.searchText = normalize([
           get(row, 'card_name'), get(row, 'collector_number'), get(row, 'expansion_code'),
           get(row, 'expansion_name'), seriesFor(row)?.label, seriesFor(row)?.category,
@@ -1072,10 +1073,53 @@
           </div>`).join('')}</div></section>`;
       };
 
-      const openDetail = position => {
+      const detailPacks = new Map();
+      const loadDetailRow = card => {
+        const code = get(card.row, 'expansion_code');
+        let request = detailPacks.get(code);
+        if (!request) {
+          const version = pack.detailVersions[code];
+          if (!version) return Promise.reject(new Error(`Missing detail version: ${code}`));
+          request = fetch(`series-data/${encodeURIComponent(code)}.json?v=${version}`)
+            .then(response => {
+              if (!response.ok) throw new Error(`Card detail request failed: ${response.status}`);
+              return response.json();
+            })
+            .then(data => {
+              if (data.fields.join('|') !== fields.join('|')) throw new Error('Card detail fields do not match');
+              const idIndex = fieldIndex.card_id;
+              return new Map(data.rows.map(row => [row[idIndex], row]));
+            })
+            .catch(error => { detailPacks.delete(code); throw error; });
+          detailPacks.set(code, request);
+        }
+        return request.then(rows => {
+          const row = rows.get(get(card.row, 'card_id'));
+          if (!row) throw new Error('Card detail is missing');
+          return row;
+        });
+      };
+      let detailRequestId = 0;
+
+      const openDetail = async position => {
         const card = cards[position];
         if (!card) return;
-        const row = card.row;
+        const requestId = ++detailRequestId;
+        let row = loadDetailRow(card);
+        if (row && typeof row.then === 'function') {
+          elements.dialogTitle.textContent = get(card.row, 'card_name') || '卡片資料';
+          elements.dialogContent.innerHTML = '<p class="detail-loading" role="status">載入卡片資料中…</p>';
+          if (!elements.dialog.open) elements.dialog.showModal();
+          try {
+            row = await row;
+          } catch (error) {
+            if (requestId !== detailRequestId || !elements.dialog.open) return;
+            elements.dialogContent.innerHTML = '<p class="detail-loading" role="alert">卡片資料載入失敗，請稍後再試。</p>';
+            console.error(error);
+            return;
+          }
+          if (requestId !== detailRequestId || !elements.dialog.open) return;
+        }
         const name = get(row, 'card_name') || '卡片資料';
         const kind = get(row, 'card_kind');
         const type = get(row, 'pokemon_type');
@@ -1107,7 +1151,7 @@
             </div>
           </div>`;
 
-        elements.dialog.showModal();
+        if (!elements.dialog.open) elements.dialog.showModal();
       };
 
       elements.search.addEventListener('input', () => {
