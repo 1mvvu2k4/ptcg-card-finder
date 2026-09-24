@@ -147,7 +147,7 @@
 
     .field { min-width: 0; }
 
-    .field label {
+    .field > label {
       display: block;
       margin: 0 0 6px 2px;
       color: var(--muted);
@@ -282,9 +282,10 @@
     }
 
     .check-option {
-      display: flex;
+      display: grid;
+      grid-template-columns: 17px minmax(0, 1fr);
       align-items: center;
-      gap: 9px;
+      column-gap: 9px;
       min-height: 38px;
       padding: 7px 8px;
       border-radius: 8px;
@@ -295,11 +296,39 @@
     .check-option:hover { background: rgba(66, 221, 255, .09); }
 
     .check-option input {
+      display: block;
       width: 17px;
       height: 17px;
-      flex: 0 0 auto;
       margin: 0;
       accent-color: var(--blue);
+    }
+
+    .check-option span {
+      display: flex;
+      align-items: center;
+      min-height: 17px;
+      line-height: 1.35;
+    }
+
+    .option-group-title {
+      margin: 6px 4px 3px;
+      padding: 7px 5px 4px;
+      border-top: 1px solid rgba(111, 167, 220, .18);
+      color: var(--muted);
+      font-size: .72rem;
+      font-weight: 800;
+      letter-spacing: .1em;
+    }
+
+    .option-group-title:first-child {
+      margin-top: 0;
+      border-top: 0;
+    }
+
+    .check-option.option-standalone {
+      margin-top: 6px;
+      border-top: 1px solid rgba(111, 167, 220, .18);
+      border-radius: 0 0 8px 8px;
     }
 
     .field-kind-inline { grid-column: 1 / -1; }
@@ -311,6 +340,7 @@
     }
 
     .inline-options .check-option {
+      grid-template-columns: 17px max-content;
       justify-content: center;
       min-height: 44px;
       border: 1px solid rgba(111, 167, 220, .25);
@@ -896,7 +926,7 @@
 
     .field-search { grid-column: 1 / -1; }
 
-    .field label {
+    .field > label {
       margin-left: 1px;
       color: #9aafcb;
       font-family: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
@@ -1285,7 +1315,7 @@
     (async () => {
       'use strict';
 
-      const response = await fetch('cards-index.json?v=9812b4759222');
+      const response = await fetch('cards-index.json?v=2f40d6112152');
       if (!response.ok) throw new Error(`Card data request failed: ${response.status}`);
       const pack = await response.json();
       const fields = pack.fields;
@@ -1368,7 +1398,7 @@
       const uniqueValues = key => [...new Set(cards.map(card => get(card.row, key)).filter(Boolean))]
         .sort((a, b) => String(a).localeCompare(String(b), 'zh-Hant', { numeric: true }));
 
-      const CARD_KIND_OPTIONS = ['能量卡', '物品卡', '寶可夢道具', '競技場卡', '支援者卡', '寶可夢卡'];
+      const CARD_KIND_OPTIONS = ['寶可夢卡', '支援者卡', '物品卡', '競技場卡', '寶可夢道具', '能量卡'];
       const REGULATION_ORDER = ['J', 'I', 'H', 'G', 'F', 'E', 'D', 'C', 'B', 'A'];
       const cardFilterKind = row => {
         const kind = get(row, 'card_kind');
@@ -1377,11 +1407,18 @@
         if (kind === '訓練家卡' && ['物品卡', '寶可夢道具', '競技場卡', '支援者卡'].includes(subtype)) return subtype;
         return kind || subtype;
       };
-      const rarityOptions = uniqueValues('rarity').sort((a, b) => {
-        if (a === '無標記') return 1;
-        if (b === '無標記') return -1;
-        return a.localeCompare(b, 'zh-Hant', { numeric: true });
-      });
+      const RARITY_GROUPS = [
+        ['ACE', ['ACE']],
+        ['基本', ['C', 'U', 'R', 'RR', 'RRR']],
+        ['進階', ['AR', 'SR', 'SAR', 'UR', 'SSR']],
+        ['特殊', ['MA', 'MUR', 'BWR', 'FUR']],
+        ['其他', ['K', 'PR', 'S', 'TR']],
+        ['無標記', ['無標記']],
+      ];
+      const availableRarities = new Set(uniqueValues('rarity'));
+      const rarityOptions = RARITY_GROUPS.flatMap(([group, values]) => values
+        .filter(value => availableRarities.has(value))
+        .map(value => ({ value, label: value, group })));
       const regulationOptions = [
         ...REGULATION_ORDER.filter(mark => cards.some(card => get(card.row, 'regulation_mark') === mark)),
         ...(cards.some(card => !get(card.row, 'regulation_mark')) ? [{ value: '', label: '無標記' }] : []),
@@ -1451,11 +1488,21 @@
 
       const fillCheckboxes = (key, filter, options) => {
         const fragment = document.createDocumentFragment();
+        let currentGroup = '';
         options.forEach((option, index) => {
           const value = typeof option === 'string' ? option : option.value;
           const display = typeof option === 'string' ? option : option.label;
+          const group = typeof option === 'string' ? '' : option.group || '';
+          if (group && group !== currentGroup && group !== '無標記') {
+            const heading = document.createElement('div');
+            heading.className = 'option-group-title';
+            heading.textContent = group;
+            fragment.appendChild(heading);
+          }
+          currentGroup = group;
           const label = document.createElement('label');
           label.className = 'check-option';
+          if (group === '無標記') label.classList.add('option-standalone');
           if (typeof option !== 'string') label.dataset.category = option.category || '';
           const input = document.createElement('input');
           input.type = 'checkbox';
@@ -1932,7 +1979,7 @@
   <script>
     if ('serviceWorker' in navigator && location.protocol === 'https:') {
       navigator.serviceWorker.register('sw.js').then(registration => {
-        const warm = () => registration.active?.postMessage({ type: 'warm-index', url: 'cards-index.json?v=9812b4759222' });
+        const warm = () => registration.active?.postMessage({ type: 'warm-index', url: 'cards-index.json?v=2f40d6112152' });
         if ('requestIdleCallback' in window) requestIdleCallback(warm); else setTimeout(warm, 1200);
       }).catch(() => {});
     }
