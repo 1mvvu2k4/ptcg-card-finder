@@ -646,21 +646,84 @@
     .detail-section h3 { margin: 0 0 9px; font-size: .92rem; color: var(--blue-dark); letter-spacing: .04em; }
     .detail-section p { margin: 0; }
 
-    .skill-list { display: grid; gap: 9px; }
+    .skill-list { display: grid; gap: 17px; }
+
+    .skill-group { display: grid; gap: 9px; }
+    .skill-group + .skill-group { padding-top: 15px; border-top: 1px solid rgba(104, 190, 255, .14); }
+
+    .skill-group-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin: 0;
+      color: #dff9ff;
+      font-size: .84rem;
+      letter-spacing: .06em;
+    }
+
+    .skill-group-title span {
+      color: var(--muted);
+      font-family: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+      font-size: .7rem;
+      font-weight: 650;
+    }
+
+    .skill-group-items { display: grid; gap: 8px; }
 
     .skill {
       padding: 12px 13px;
       border: 1px solid var(--line);
-      border-left: 4px solid var(--blue);
+      border-left: 3px solid var(--blue);
       border-radius: 10px;
       background: rgba(7, 23, 45, .78);
     }
 
-    .skill-title { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
-    .skill-title strong { color: #dff9ff; }
-    .damage { flex: 0 0 auto; font-size: 1.06rem; font-weight: 850; }
-    .skill-meta { margin: 4px 0 0; color: var(--muted); font-size: .8rem; }
-    .skill-effect { margin: 7px 0 0; white-space: pre-wrap; }
+    .skill.ability { border-left-color: #4ee0ac; background: rgba(19, 88, 79, .14); }
+    .skill.special { border-left-color: var(--violet); background: rgba(84, 62, 157, .13); }
+    .skill.effect { border-left-color: #58b9ff; }
+    .skill.rule { border-left-color: #a890ff; background: rgba(85, 67, 147, .11); }
+
+    .skill-title { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .skill-heading { min-width: 0; display: flex; align-items: center; flex-wrap: wrap; gap: 7px; }
+    .skill-title strong { color: #e8faff; font-size: .96rem; overflow-wrap: anywhere; }
+
+    .skill-badge {
+      display: inline-flex;
+      align-items: center;
+      min-height: 20px;
+      padding: 2px 6px;
+      border: 1px solid rgba(188, 167, 255, .35);
+      border-radius: 5px;
+      background: rgba(139, 104, 255, .12);
+      color: #d3c8ff;
+      font-size: .66rem;
+      font-weight: 800;
+      letter-spacing: .04em;
+    }
+
+    .damage {
+      flex: 0 0 auto;
+      color: #f7fbff;
+      font-family: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+      font-size: 1.04rem;
+      font-weight: 850;
+    }
+
+    .skill-meta { margin: 6px 0 0; color: var(--muted); font-size: .76rem; }
+    .skill-effect { margin: 8px 0 0; line-height: 1.7; white-space: normal; overflow-wrap: anywhere; }
+    .skill:not(:has(.skill-title)) .skill-effect { margin-top: 0; }
+
+    .skill-note {
+      display: block;
+      margin-top: 7px;
+      padding: 6px 8px;
+      border-left: 2px solid rgba(139, 104, 255, .55);
+      background: rgba(139, 104, 255, .08);
+      color: #c9c1e8;
+      font-size: .82rem;
+      line-height: 1.55;
+    }
 
     .flavor {
       padding: 13px 15px;
@@ -1185,7 +1248,7 @@
     (async () => {
       'use strict';
 
-      const response = await fetch('cards-index.json?v=6541cec68f6d');
+      const response = await fetch('cards-index.json?v=462a3ed1ebe7');
       if (!response.ok) throw new Error(`Card data request failed: ${response.status}`);
       const pack = await response.json();
       const fields = pack.fields;
@@ -1508,14 +1571,44 @@
         ? `<section class="detail-section"><h3>${escapeHtml(title)}</h3><p class="${extraClass}">${escapeHtml(value)}</p></section>`
         : '';
 
+      const skillEffectMarkup = value => {
+        if (!value) return '';
+        const parts = String(value).split(/(\[[^\]]+\]|［[^］]+］)/g).filter(Boolean);
+        const content = parts.map(part => {
+          const escaped = escapeHtml(part).replace(/\n/g, '<br>');
+          return /^(?:\[|［)/.test(part) ? `<span class="skill-note">${escaped}</span>` : escaped;
+        }).join('');
+        return `<p class="skill-effect">${content}</p>`;
+      };
+
+      const skillCardMarkup = skill => {
+        const allowedKinds = new Set(['ability', 'attack', 'special', 'effect', 'rule']);
+        const kind = allowedKinds.has(skill.kind) ? skill.kind : 'effect';
+        const name = skill.name || '';
+        const cost = Array.isArray(skill.cost) ? skill.cost.filter(Boolean).join('、') : '';
+        const hasTitle = Boolean(name || skill.damage || kind === 'special');
+        return `<article class="skill ${kind}">
+          ${hasTitle ? `<div class="skill-title"><div class="skill-heading">${kind === 'special' ? '<span class="skill-badge">特殊招式</span>' : ''}${name ? `<strong>${escapeHtml(name)}</strong>` : ''}</div>${skill.damage ? `<span class="damage">${escapeHtml(skill.damage)}</span>` : ''}</div>` : ''}
+          ${cost ? `<div class="skill-meta">能量需求：${escapeHtml(cost)}</div>` : ''}
+          ${skillEffectMarkup(skill.effect)}
+        </article>`;
+      };
+
       const skillsMarkup = skills => {
         if (!Array.isArray(skills) || !skills.length) return '';
-        return `<section class="detail-section"><h3>招式與能力</h3><div class="skill-list">${skills.map(skill => `
-          <div class="skill">
-            <div class="skill-title"><strong>${escapeHtml(skill.name || skill.section || '招式')}</strong>${skill.damage ? `<span class="damage">${escapeHtml(skill.damage)}</span>` : ''}</div>
-            ${skill.section || (skill.cost && skill.cost.length) ? `<div class="skill-meta">${escapeHtml([skill.section, (skill.cost || []).join('、')].filter(Boolean).join(' · '))}</div>` : ''}
-            ${skill.effect ? `<p class="skill-effect">${escapeHtml(skill.effect)}</p>` : ''}
-          </div>`).join('')}</div></section>`;
+        const groupKey = skill => skill.kind === 'special' ? 'attack' : (skill.kind || 'effect');
+        const groups = [
+          ['ability', '特性'],
+          ['attack', '招式'],
+          ['effect', '卡片效果'],
+          ['rule', '規則'],
+        ].map(([key, title]) => ({ key, title, items: skills.filter(skill => groupKey(skill) === key) }))
+          .filter(group => group.items.length);
+        return `<section class="detail-section"><h3>招式與能力</h3><div class="skill-list">${groups.map(group => `
+          <section class="skill-group" data-skill-group="${group.key}">
+            <h4 class="skill-group-title">${group.title}<span>${group.items.length}</span></h4>
+            <div class="skill-group-items">${group.items.map(skillCardMarkup).join('')}</div>
+          </section>`).join('')}</div></section>`;
       };
 
       const detailPacks = new Map();
@@ -1765,7 +1858,7 @@
   <script>
     if ('serviceWorker' in navigator && location.protocol === 'https:') {
       navigator.serviceWorker.register('sw.js').then(registration => {
-        const warm = () => registration.active?.postMessage({ type: 'warm-index', url: 'cards-index.json?v=6541cec68f6d' });
+        const warm = () => registration.active?.postMessage({ type: 'warm-index', url: 'cards-index.json?v=462a3ed1ebe7' });
         if ('requestIdleCallback' in window) requestIdleCallback(warm); else setTimeout(warm, 1200);
       }).catch(() => {});
     }
