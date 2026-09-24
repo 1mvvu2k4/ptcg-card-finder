@@ -44,9 +44,9 @@
         var(--wash);
       background-size: auto, auto, 32px 32px, 32px 32px, auto;
       color: var(--ink);
-      font-family: "Segoe UI", "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif;
+      font-family: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei UI", "Microsoft JhengHei", system-ui, sans-serif;
       font-size: 16px;
-      line-height: 1.55;
+      line-height: 1.62;
     }
 
     ::selection { background: rgba(66, 221, 255, .28); color: white; }
@@ -300,6 +300,35 @@
       flex: 0 0 auto;
       margin: 0;
       accent-color: var(--blue);
+    }
+
+    .field-kind-inline { grid-column: 1 / -1; }
+
+    .inline-options {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .inline-options .check-option {
+      justify-content: center;
+      min-height: 44px;
+      border: 1px solid rgba(111, 167, 220, .25);
+      background: rgba(2, 10, 23, .76);
+      font-weight: 700;
+      transition: border-color .18s ease, background-color .18s ease, color .18s ease;
+    }
+
+    .inline-options .check-option:hover {
+      border-color: rgba(66, 221, 255, .48);
+      background: rgba(66, 221, 255, .08);
+    }
+
+    .inline-options .check-option:has(input:checked) {
+      border-color: var(--blue);
+      background: linear-gradient(135deg, rgba(20, 172, 208, .2), rgba(115, 88, 221, .18));
+      color: var(--blue-dark);
+      box-shadow: inset 0 0 0 1px rgba(66, 221, 255, .08);
     }
 
     .filter-help {
@@ -996,6 +1025,7 @@
 
     @media (max-width: 1120px) {
       .search-row { grid-template-columns: 1.4fr repeat(2, minmax(150px, .65fr)); }
+      .inline-options { grid-template-columns: repeat(3, minmax(0, 1fr)); }
       .clear-btn { width: 100%; }
     }
 
@@ -1066,6 +1096,8 @@
       .filter-fields .clear-btn { grid-column: 1 / -1; }
       .filter-fields .multi-menu { position: static; width: 100%; max-height: none; margin-top: 7px; }
       .filter-fields .option-list { max-height: min(36vh, 280px); }
+      .field-kind-inline { grid-column: 1 / -1; }
+      .inline-options { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       body.filters-open { overflow: hidden; }
       .summary-row { align-items: flex-start; flex-direction: column; padding: 14px 2px; }
       .card-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
@@ -1079,6 +1111,7 @@
       .search-panel { padding: 12px; border-radius: 14px; }
       .filter-fields { grid-template-columns: 1fr; }
       .filter-fields .clear-btn, .filter-sheet-head { grid-column: auto; }
+      .field-kind-inline { grid-column: auto; }
       .card-grid { gap: 9px; }
       .card-title { font-size: .94rem; }
       .chip { font-size: .7rem; }
@@ -1124,6 +1157,10 @@
         <button class="filter-backdrop" id="filter-backdrop" type="button" aria-label="關閉篩選條件" tabindex="-1"></button>
         <div class="filter-fields" id="filter-fields">
           <div class="filter-sheet-head"><strong>篩選條件</strong><button id="filter-close" type="button" aria-label="關閉篩選條件">×</button></div>
+        <div class="field field-kind-inline">
+          <label id="kind-label">卡片種類</label>
+          <div class="inline-options" id="kind-options" role="group" aria-labelledby="kind-label"></div>
+        </div>
         <div class="field">
           <label id="category-label">系列分類</label>
           <details class="multi-select" id="category-filter">
@@ -1146,16 +1183,6 @@
           </details>
         </div>
         <div class="field">
-          <label id="kind-label">卡片種類</label>
-          <details class="multi-select" id="kind-filter">
-            <summary><span class="multi-value">全部種類</span></summary>
-            <div class="multi-menu" role="group" aria-labelledby="kind-label">
-              <div class="multi-actions"><button type="button" data-action="all">全選</button><button type="button" data-action="clear">清除</button></div>
-              <div class="option-list" id="kind-options"></div>
-            </div>
-          </details>
-        </div>
-        <div class="field">
           <label id="type-label">寶可夢屬性</label>
           <details class="multi-select" id="type-filter">
             <summary><span class="multi-value">全部屬性</span></summary>
@@ -1172,6 +1199,16 @@
             <div class="multi-menu" role="group" aria-labelledby="stage-label">
               <div class="multi-actions"><button type="button" data-action="all">全選</button><button type="button" data-action="clear">清除</button></div>
               <div class="option-list" id="stage-options"></div>
+            </div>
+          </details>
+        </div>
+        <div class="field">
+          <label id="rarity-label">稀有度</label>
+          <details class="multi-select" id="rarity-filter">
+            <summary><span class="multi-value">全部稀有度</span></summary>
+            <div class="multi-menu" role="group" aria-labelledby="rarity-label">
+              <div class="multi-actions"><button type="button" data-action="all">全選</button><button type="button" data-action="clear">清除</button></div>
+              <div class="option-list" id="rarity-options"></div>
             </div>
           </details>
         </div>
@@ -1248,7 +1285,7 @@
     (async () => {
       'use strict';
 
-      const response = await fetch('cards-index.json?v=7b537b6106cf');
+      const response = await fetch('cards-index.json?v=9812b4759222');
       if (!response.ok) throw new Error(`Card data request failed: ${response.status}`);
       const pack = await response.json();
       const fields = pack.fields;
@@ -1331,6 +1368,25 @@
       const uniqueValues = key => [...new Set(cards.map(card => get(card.row, key)).filter(Boolean))]
         .sort((a, b) => String(a).localeCompare(String(b), 'zh-Hant', { numeric: true }));
 
+      const CARD_KIND_OPTIONS = ['能量卡', '物品卡', '寶可夢道具', '競技場卡', '支援者卡', '寶可夢卡'];
+      const REGULATION_ORDER = ['J', 'I', 'H', 'G', 'F', 'E', 'D', 'C', 'B', 'A'];
+      const cardFilterKind = row => {
+        const kind = get(row, 'card_kind');
+        const subtype = get(row, 'subtype');
+        if (kind === '寶可夢卡' || kind === '能量卡') return kind;
+        if (kind === '訓練家卡' && ['物品卡', '寶可夢道具', '競技場卡', '支援者卡'].includes(subtype)) return subtype;
+        return kind || subtype;
+      };
+      const rarityOptions = uniqueValues('rarity').sort((a, b) => {
+        if (a === '無標記') return 1;
+        if (b === '無標記') return -1;
+        return a.localeCompare(b, 'zh-Hant', { numeric: true });
+      });
+      const regulationOptions = [
+        ...REGULATION_ORDER.filter(mark => cards.some(card => get(card.row, 'regulation_mark') === mark)),
+        ...(cards.some(card => !get(card.row, 'regulation_mark')) ? [{ value: '', label: '無標記' }] : []),
+      ];
+
       const filters = {
         category: {
           allLabel: '全部分類',
@@ -1344,9 +1400,7 @@
           list: document.getElementById('expansion-options'),
         },
         kind: {
-          field: 'card_kind',
           allLabel: '全部種類',
-          details: document.getElementById('kind-filter'),
           list: document.getElementById('kind-options'),
         },
         type: {
@@ -1360,6 +1414,12 @@
           allLabel: '全部階段',
           details: document.getElementById('stage-filter'),
           list: document.getElementById('stage-options'),
+        },
+        rarity: {
+          field: 'rarity',
+          allLabel: '全部稀有度',
+          details: document.getElementById('rarity-filter'),
+          list: document.getElementById('rarity-options'),
         },
         regulation: {
           field: 'regulation_mark',
@@ -1413,7 +1473,11 @@
       Object.entries(filters).forEach(([key, filter]) => {
         fillCheckboxes(key, filter, key === 'category'
           ? ['擴充包', '預組', '特典卡']
-          : key === 'expansion' ? expansionOptions : uniqueValues(filter.field));
+          : key === 'expansion' ? expansionOptions
+            : key === 'kind' ? CARD_KIND_OPTIONS
+              : key === 'rarity' ? rarityOptions
+                : key === 'regulation' ? regulationOptions
+                  : uniqueValues(filter.field));
       });
 
       elements.datasetNote.textContent = `${cards.length.toLocaleString('zh-TW')} 張卡片 · 資料更新 ${formatDate(pack.sourceUpdatedAt)}`;
@@ -1494,6 +1558,12 @@
 
       const updateFilterLabel = filter => {
         const selected = [...filter.list.querySelectorAll('input:checked')];
+        if (!filter.details) {
+          elements.filterCount.textContent = Object.values(filters).reduce(
+            (count, current) => count + current.list.querySelectorAll('input:checked').length, 0
+          );
+          return;
+        }
         const label = filter.details.querySelector('.multi-value');
         label.textContent = selected.length === 0
           ? filter.allLabel
@@ -1511,7 +1581,7 @@
         elements.filterBackdrop.classList.toggle('is-open', open);
         elements.filterToggle.setAttribute('aria-expanded', String(open));
         document.body.classList.toggle('filters-open', open);
-        if (!open) Object.values(filters).forEach(filter => { filter.details.open = false; });
+        if (!open) Object.values(filters).forEach(filter => { if (filter.details) filter.details.open = false; });
       };
 
       const setFilterValues = (filter, values) => {
@@ -1546,9 +1616,10 @@
           const row = card.row;
           if (active.category.size && !active.category.has(seriesFor(row)?.category)) return false;
           if (active.expansion.size && !active.expansion.has(get(row, 'expansion_code'))) return false;
-          if (active.kind.size && !active.kind.has(get(row, 'card_kind'))) return false;
+          if (active.kind.size && !active.kind.has(cardFilterKind(row))) return false;
           if (active.type.size && !active.type.has(get(row, 'pokemon_type'))) return false;
           if (active.stage.size && !active.stage.has(get(row, 'evolution_stage'))) return false;
+          if (active.rarity.size && !active.rarity.has(get(row, 'rarity'))) return false;
           if (active.regulation.size && !active.regulation.has(get(row, 'regulation_mark'))) return false;
           return tokens.every(token => searchTextFor(card).includes(token));
         }).sort((a, b) => compareSeriesCodes(
@@ -1721,36 +1792,38 @@
           updateFilterLabel(filter);
           applyFilters();
         });
-        filter.details.querySelector('.multi-actions').addEventListener('click', event => {
-          const button = event.target.closest('button[data-action]');
-          if (!button) return;
-          const checked = button.dataset.action === 'all';
-          filter.list.querySelectorAll('input[type="checkbox"]').forEach(input => {
-            if (!checked || filter !== filters.expansion || !input.closest('.check-option').hidden) input.checked = checked;
+        if (filter.details) {
+          filter.details.querySelector('.multi-actions').addEventListener('click', event => {
+            const button = event.target.closest('button[data-action]');
+            if (!button) return;
+            const checked = button.dataset.action === 'all';
+            filter.list.querySelectorAll('input[type="checkbox"]').forEach(input => {
+              if (!checked || filter !== filters.expansion || !input.closest('.check-option').hidden) input.checked = checked;
+            });
+            if (filter === filters.category) {
+              updateExpansionOptionVisibility();
+            }
+            updateFilterLabel(filter);
+            applyFilters();
           });
-          if (filter === filters.category) {
-            updateExpansionOptionVisibility();
-          }
-          updateFilterLabel(filter);
-          applyFilters();
-        });
-        filter.details.addEventListener('toggle', () => {
-          if (!filter.details.open) return;
-          Object.values(filters).forEach(other => {
-            if (other !== filter) other.details.open = false;
+          filter.details.addEventListener('toggle', () => {
+            if (!filter.details.open) return;
+            Object.values(filters).forEach(other => {
+              if (other !== filter && other.details) other.details.open = false;
+            });
           });
-        });
+        }
       });
 
       document.addEventListener('click', event => {
         if (event.target.closest('.multi-select')) return;
-        Object.values(filters).forEach(filter => { filter.details.open = false; });
+        Object.values(filters).forEach(filter => { if (filter.details) filter.details.open = false; });
       });
 
       document.addEventListener('keydown', event => {
         if (event.key !== 'Escape') return;
         setFilterDrawer(false);
-        Object.values(filters).forEach(filter => { filter.details.open = false; });
+        Object.values(filters).forEach(filter => { if (filter.details) filter.details.open = false; });
       });
 
       elements.clear.addEventListener('click', () => {
@@ -1797,7 +1870,7 @@
         const tool = {
           name: 'search_cards',
           title: '搜尋 PTCG 卡片',
-          description: '以關鍵字及可複選的系列分類、系列、卡片種類、屬性、進化階段或規則標記，搜尋本頁內建的繁體中文版 PTCG 卡片。',
+          description: '以關鍵字及可複選的系列分類、系列、卡片種類、屬性、進化階段、稀有度或規則標記，搜尋本頁內建的繁體中文版 PTCG 卡片。',
           inputSchema: {
             type: 'object',
             properties: {
@@ -1807,6 +1880,7 @@
               kind: { type: 'array', items: { type: 'string' }, uniqueItems: true },
               type: { type: 'array', items: { type: 'string' }, uniqueItems: true },
               stage: { type: 'array', items: { type: 'string' }, uniqueItems: true },
+              rarity: { type: 'array', items: { type: 'string' }, uniqueItems: true },
               regulation: { type: 'array', items: { type: 'string' }, uniqueItems: true },
             },
             additionalProperties: false,
@@ -1815,7 +1889,7 @@
           execute(input) {
             if (!input || typeof input !== 'object' || Array.isArray(input)) throw new Error('搜尋條件格式不正確');
             if (input.query !== undefined && typeof input.query !== 'string') throw new Error('query 必須是文字');
-            for (const key of ['category', 'expansion', 'kind', 'type', 'stage', 'regulation']) {
+            for (const key of ['category', 'expansion', 'kind', 'type', 'stage', 'rarity', 'regulation']) {
               if (input[key] === undefined) continue;
               if (!Array.isArray(input[key])) throw new Error(`${key} 必須是文字陣列`);
               if (input[key].some(value => typeof value !== 'string' || !allowed[key].has(value))) {
@@ -1858,7 +1932,7 @@
   <script>
     if ('serviceWorker' in navigator && location.protocol === 'https:') {
       navigator.serviceWorker.register('sw.js').then(registration => {
-        const warm = () => registration.active?.postMessage({ type: 'warm-index', url: 'cards-index.json?v=7b537b6106cf' });
+        const warm = () => registration.active?.postMessage({ type: 'warm-index', url: 'cards-index.json?v=9812b4759222' });
         if ('requestIdleCallback' in window) requestIdleCallback(warm); else setTimeout(warm, 1200);
       }).catch(() => {});
     }
