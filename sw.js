@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ptcg-70329952f733';
+const CACHE_NAME = 'ptcg-7f133f0ee68c';
 const SHELL = ['./', './index.html', './manifest.webmanifest', './assets/app-icon-192.png', './assets/app-icon-512.png'];
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(SHELL)).then(() => self.skipWaiting()));
