@@ -1238,6 +1238,10 @@
       color: var(--ink);
     }
     .search-input { border-color: #9aa9a5; }
+    .search-syntax { margin: 7px 1px 0; color: var(--muted); font-size: .78rem; line-height: 1.5; }
+    .search-syntax code { color: var(--blue); font-family: inherit; font-weight: 800; }
+    .search-error { margin: 6px 1px 0; color: #a13c30; font-size: .8rem; font-weight: 700; }
+    .search-input[aria-invalid="true"] { border-color: #a13c30; box-shadow: 0 0 0 2px rgba(161, 60, 48, .12); }
     .control::placeholder,
     .option-search::placeholder { color: #727c7c; }
     .control:focus,
@@ -1416,7 +1420,9 @@
       <div class="search-row">
         <div class="field field-search">
           <label for="search">關鍵字</label>
-          <input class="control search-input" id="search" type="search" autocomplete="off" placeholder="搜尋卡名、卡號、系列、繪師或招式效果">
+          <input class="control search-input" id="search" type="search" autocomplete="off" aria-describedby="search-syntax search-error" placeholder="搜尋卡名、卡號、系列、繪師或招式效果">
+          <p class="search-syntax" id="search-syntax"><code>&amp;</code> 全部符合 · <code>|</code> 任一符合 · <code>!</code> 排除。可用括號；含符號的名稱請加引號，例如 <code>"劍&amp;盾"</code>。</p>
+          <p class="search-error" id="search-error" role="alert" hidden></p>
         </div>
         <button class="filter-toggle" id="filter-toggle" type="button" aria-expanded="false" aria-controls="filter-fields">篩選條件 <span id="filter-count">0</span></button>
         <button class="filter-backdrop" id="filter-backdrop" type="button" aria-label="關閉篩選條件" tabindex="-1"></button>
@@ -1559,6 +1565,100 @@
       const seriesByCode = new Map(pack.series.map(series => [series.code, series]));
       const seriesFor = row => seriesByCode.get(get(row, 'expansion_code'));
       const normalize = value => String(value || '').normalize('NFKC').toLocaleLowerCase('zh-Hant').replace(/\s+/g, ' ').trim();
+      const parseBooleanQuery = value => {
+        const source = String(value ?? '').normalize('NFKC');
+        const tokens = [];
+        let position = 0;
+
+        while (position < source.length) {
+          const character = source[position];
+          if (/\s/u.test(character)) { position += 1; continue; }
+          if ('!&|()'.includes(character)) {
+            tokens.push({ type: character });
+            position += 1;
+            continue;
+          }
+          if (character === '"' || character === '“') {
+            const closing = character === '“' ? '”' : '"';
+            let phrase = '';
+            let closed = false;
+            position += 1;
+            while (position < source.length) {
+              if (source[position] === '\\' && (source[position + 1] === closing || source[position + 1] === '\\')) {
+                phrase += source[position + 1];
+                position += 2;
+              } else if (source[position] === closing) {
+                closed = true;
+                position += 1;
+                break;
+              } else {
+                phrase += source[position];
+                position += 1;
+              }
+            }
+            if (!closed) throw new Error('引號尚未關閉，請補上結尾引號。');
+            if (!normalize(phrase)) throw new Error('引號內請輸入關鍵字。');
+            tokens.push({ type: 'term', value: normalize(phrase) });
+            continue;
+          }
+          if (character === '”') throw new Error('引號位置不正確。');
+          const start = position;
+          while (position < source.length && !/\s|[!&|()"“”]/u.test(source[position])) position += 1;
+          tokens.push({ type: 'term', value: normalize(source.slice(start, position)) });
+        }
+
+        if (!tokens.length) return null;
+        if (tokens.length > 100) throw new Error('搜尋條件過長，請減少關鍵字。');
+        let cursor = 0;
+        const peek = () => tokens[cursor]?.type;
+        const consume = type => peek() === type ? (cursor += 1, true) : false;
+        const startsExpression = type => type === 'term' || type === '(' || type === '!';
+
+        const parsePrimary = () => {
+          if (consume('(')) {
+            const expression = parseOr();
+            if (!consume(')')) throw new Error('缺少右括號 )。');
+            return expression;
+          }
+          if (peek() === 'term') return { kind: 'term', value: tokens[cursor++].value };
+          if (peek() === ')') throw new Error('括號內缺少關鍵字，或多了一個右括號。');
+          throw new Error('請在運算符號後輸入關鍵字。');
+        };
+        const parseNot = () => consume('!')
+          ? { kind: 'not', item: parseNot() }
+          : parsePrimary();
+        const parseAnd = () => {
+          let expression = parseNot();
+          while (peek() === '&' || startsExpression(peek())) {
+            consume('&');
+            expression = { kind: 'and', left: expression, right: parseNot() };
+          }
+          return expression;
+        };
+        const parseOr = () => {
+          let expression = parseAnd();
+          while (consume('|')) {
+            expression = { kind: 'or', left: expression, right: parseAnd() };
+          }
+          return expression;
+        };
+
+        const expression = parseOr();
+        if (cursor !== tokens.length) throw new Error('搜尋式的括號或符號位置不正確。');
+        return expression;
+      };
+
+      const matchesBooleanQuery = (expression, text) => {
+        if (!expression) return true;
+        switch (expression.kind) {
+          case 'term': return text.includes(expression.value);
+          case 'not': return !matchesBooleanQuery(expression.item, text);
+          case 'and': return matchesBooleanQuery(expression.left, text) && matchesBooleanQuery(expression.right, text);
+          case 'or': return matchesBooleanQuery(expression.left, text) || matchesBooleanQuery(expression.right, text);
+          default: return false;
+        }
+      };
+
       const escapeHtml = value => String(value ?? '').replace(/[&<>'"]/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char]));
       const escapeAttr = escapeHtml;
       const HOME_CARD_COUNT = 10;
@@ -1566,6 +1666,7 @@
 
       const elements = {
         search: document.getElementById('search'),
+        searchError: document.getElementById('search-error'),
         expansionOptionSearch: document.getElementById('expansion-option-search'),
         clear: document.getElementById('clear'),
         grid: document.getElementById('card-grid'),
@@ -1879,12 +1980,23 @@
       };
 
       const applyFilters = () => {
-        const tokens = normalize(elements.search.value).split(' ').filter(Boolean);
+        let expression;
+        try {
+          expression = parseBooleanQuery(elements.search.value);
+        } catch (error) {
+          elements.searchError.textContent = error.message;
+          elements.searchError.hidden = false;
+          elements.search.setAttribute('aria-invalid', 'true');
+          return false;
+        }
+        elements.searchError.hidden = true;
+        elements.searchError.textContent = '';
+        elements.search.removeAttribute('aria-invalid');
         const active = Object.fromEntries(
           Object.entries(filters).map(([key, filter]) => [key, selectedValues(filter)])
         );
 
-        const hasCriteria = tokens.length > 0 || Object.values(active).some(values => values.size > 0);
+        const hasCriteria = Boolean(expression) || Object.values(active).some(values => values.size > 0);
         if (!hasCriteria) {
           isHomeRandom = true;
           filteredCards = pickRandomCards(cards, HOME_CARD_COUNT);
@@ -1903,7 +2015,7 @@
           if (active.stage.size && !active.stage.has(get(row, 'evolution_stage'))) return false;
           if (active.rarity.size && !active.rarity.has(get(row, 'rarity'))) return false;
           if (active.regulation.size && !active.regulation.has(get(row, 'regulation_mark'))) return false;
-          return tokens.every(token => searchTextFor(card).includes(token));
+          return !expression || matchesBooleanQuery(expression, searchTextFor(card));
         }).sort((a, b) => compareSeriesCodes(
           get(a.row, 'expansion_code'), get(b.row, 'expansion_code')
         ) || a.position - b.position);
@@ -2171,6 +2283,7 @@
           execute(input) {
             if (!input || typeof input !== 'object' || Array.isArray(input)) throw new Error('搜尋條件格式不正確');
             if (input.query !== undefined && typeof input.query !== 'string') throw new Error('query 必須是文字');
+            if (input.query !== undefined) parseBooleanQuery(input.query);
             for (const key of ['category', 'expansion', 'kind', 'type', 'stage', 'rarity', 'regulation']) {
               if (input[key] === undefined) continue;
               if (!Array.isArray(input[key])) throw new Error(`${key} 必須是文字陣列`);
