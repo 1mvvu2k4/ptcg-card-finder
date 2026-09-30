@@ -769,6 +769,9 @@
     }
 
     .skill-meta { margin: 6px 0 0; color: var(--muted); font-size: .76rem; }
+    .skill-energy { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; margin-top: 7px; }
+    .skill-energy-label { margin-right: 3px; color: var(--muted); font-size: .76rem; }
+    .skill-energy-icon { width: 20px; height: 20px; object-fit: contain; flex: 0 0 auto; }
     .skill-effect { margin: 8px 0 0; line-height: 1.7; white-space: normal; overflow-wrap: anywhere; }
     .skill:not(:has(.skill-title)) .skill-effect { margin-top: 0; }
 
@@ -1556,7 +1559,7 @@
     (async () => {
       'use strict';
 
-      const response = await fetch('cards-index.json?v=2f40d6112152');
+      const response = await fetch('cards-index.json?v=11750839ed04');
       if (!response.ok) throw new Error(`Card data request failed: ${response.status}`);
       const pack = await response.json();
       const fields = pack.fields;
@@ -2046,15 +2049,25 @@
         return `<p class="skill-effect">${content}</p>`;
       };
 
+      const energyTypeKeys = { '無色': '無', '惡': '惡', '妖': '妖', '鬥': '鬥', '火': '火', '草': '草', '雷': '雷', '鋼': '鋼', '超': '超', '水': '水' };
+      const energyCostMarkup = cost => {
+        if (!Array.isArray(cost) || !cost.length) return '';
+        const icons = cost.map(type => {
+          const icon = pack.typeIcons?.[energyTypeKeys[type]];
+          return icon ? `<img class="skill-energy-icon" src="${escapeAttr(icon)}" alt="" loading="lazy">` : `<span>${escapeHtml(type)}</span>`;
+        }).join('');
+        return `<div class="skill-energy" role="img" aria-label="能量需求：${escapeAttr(cost.join('、'))}"><span class="skill-energy-label" aria-hidden="true">能量需求</span>${icons}</div>`;
+      };
+
       const skillCardMarkup = skill => {
         const allowedKinds = new Set(['ability', 'attack', 'special', 'effect', 'rule']);
         const kind = allowedKinds.has(skill.kind) ? skill.kind : 'effect';
         const name = skill.name || '';
-        const cost = Array.isArray(skill.cost) ? skill.cost.filter(Boolean).join('、') : '';
+        const cost = Array.isArray(skill.cost) ? skill.cost.filter(Boolean) : [];
         const hasTitle = Boolean(name || skill.damage || kind === 'special');
         return `<article class="skill ${kind}">
           ${hasTitle ? `<div class="skill-title"><div class="skill-heading">${kind === 'special' ? '<span class="skill-badge">特殊招式</span>' : ''}${name ? `<strong>${escapeHtml(name)}</strong>` : ''}</div>${skill.damage ? `<span class="damage">${escapeHtml(skill.damage)}</span>` : ''}</div>` : ''}
-          ${cost ? `<div class="skill-meta">能量需求：${escapeHtml(cost)}</div>` : ''}
+          ${energyCostMarkup(cost)}
           ${skillEffectMarkup(skill.effect)}
         </article>`;
       };
@@ -2327,7 +2340,7 @@
   <script>
     if ('serviceWorker' in navigator && location.protocol === 'https:') {
       navigator.serviceWorker.register('sw.js').then(registration => {
-        const warm = () => registration.active?.postMessage({ type: 'warm-index', url: 'cards-index.json?v=2f40d6112152' });
+        const warm = () => registration.active?.postMessage({ type: 'warm-index', url: 'cards-index.json?v=11750839ed04' });
         if ('requestIdleCallback' in window) requestIdleCallback(warm); else setTimeout(warm, 1200);
       }).catch(() => {});
     }
