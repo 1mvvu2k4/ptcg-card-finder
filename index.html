@@ -3,12 +3,11 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="color-scheme" content="dark">
-  <meta name="theme-color" content="#061226">
+  <meta name="color-scheme" content="light">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="apple-touch-icon" href="assets/app-icon-192.png">
-  <meta name="theme-color" content="#030915">
+  <meta name="theme-color" content="#f6f6f2">
   <title>PTCG 卡片查詢器</title>
   <style>
     [hidden] { display: none !important; }
@@ -1151,6 +1150,242 @@
 
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
+    }
+
+    /* A 版：冷白紙面、墨黑資訊與少量深青色互動提示。 */
+    :root {
+      --ink: #1b1e22;
+      --muted: #5d6668;
+      --line: #d9ddda;
+      --surface: #ffffff;
+      --surface-solid: #ffffff;
+      --wash: #f6f6f2;
+      --navy: #1b1e22;
+      --blue: #0b6b7a;
+      --blue-dark: #0b6b7a;
+      --violet: #0b6b7a;
+      --yellow: #0b6b7a;
+      --shadow: 0 12px 32px rgba(27, 30, 34, .07);
+      --radius: 4px;
+    }
+
+    body {
+      background: var(--wash);
+      color: var(--ink);
+      font-family: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei UI", system-ui, sans-serif;
+    }
+
+    ::selection { background: #cce2e3; color: var(--ink); }
+    * { scrollbar-color: #b8c3c1 #f2f3ef; }
+    :focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+
+    .topbar {
+      border-bottom: 1px solid var(--line);
+      background: rgba(246, 246, 242, .97);
+      box-shadow: none;
+      backdrop-filter: none;
+    }
+    .topbar-inner { min-height: 76px; }
+    .brand-mark {
+      border-color: var(--ink);
+      border-radius: 2px;
+      background: transparent;
+      box-shadow: none;
+    }
+    .brand-mark::after {
+      border-color: var(--blue);
+      border-radius: 1px;
+      background: transparent;
+    }
+    h1 { color: var(--ink); font-weight: 800; letter-spacing: .075em; }
+    .dataset-note { color: var(--muted); }
+    .load-progress { background: var(--line); }
+    .load-progress span { background: var(--blue); }
+    .retry-load { color: var(--blue); }
+
+    main { padding-top: 34px; }
+    .search-panel {
+      padding: 26px;
+      border: 1px solid var(--line);
+      border-radius: 3px;
+      background: #fff;
+      box-shadow: none;
+    }
+    .search-panel::before { left: 26px; width: 46px; height: 2px; background: var(--blue); }
+    .panel-heading { margin-bottom: 21px; padding-bottom: 17px; border-color: var(--line); }
+    .panel-kicker {
+      color: var(--blue);
+      font-family: inherit;
+      font-size: .69rem;
+      font-weight: 800;
+      letter-spacing: .2em;
+    }
+    .panel-heading h2 { margin-top: 5px; font-size: 1.35rem; letter-spacing: .05em; }
+    .panel-heading p { color: var(--muted); }
+    .field > label {
+      color: #4e5759;
+      font-family: inherit;
+      font-size: .8rem;
+      font-weight: 700;
+      letter-spacing: .035em;
+    }
+    .control,
+    .multi-select summary,
+    .option-search {
+      border: 1px solid #cbd3d0;
+      border-radius: 3px;
+      background: #fff;
+      color: var(--ink);
+    }
+    .search-input { border-color: #9aa9a5; }
+    .control::placeholder,
+    .option-search::placeholder { color: #727c7c; }
+    .control:focus,
+    .option-search:focus,
+    .multi-select[open] summary {
+      border-color: var(--blue);
+      box-shadow: 0 0 0 2px rgba(11, 107, 122, .12);
+    }
+    .multi-select summary::after { border-color: var(--blue); }
+    .multi-value.has-selection { color: var(--blue); }
+    .multi-menu {
+      border: 1px solid #cbd3d0;
+      border-radius: 3px;
+      background: #fff;
+      box-shadow: 0 12px 28px rgba(27, 30, 34, .12);
+    }
+    .multi-actions { border-color: var(--line); background: #f8f9f6; }
+    .multi-actions button {
+      border-color: #cbd3d0;
+      border-radius: 3px;
+      background: #fff;
+      color: var(--blue);
+    }
+    .check-option { color: var(--ink); }
+    .check-option:hover { background: #edf3f1; }
+    .check-option input { accent-color: var(--blue); }
+    .option-group-title,
+    .check-option.option-standalone { border-color: var(--line); }
+    .inline-options .check-option {
+      border: 1px solid #cbd3d0;
+      border-radius: 3px;
+      background: #fff;
+      color: var(--ink);
+    }
+    .inline-options .check-option:hover { border-color: var(--blue); background: #f1f7f5; }
+    .inline-options .check-option:has(input:checked) {
+      border-color: var(--blue);
+      background: #e7f1ef;
+      color: #064d59;
+      box-shadow: none;
+    }
+    .filter-help { border-color: var(--line); }
+    .filter-toggle {
+      border-color: var(--line);
+      border-radius: 3px;
+      background: #fff;
+    }
+    .filter-toggle span { background: var(--blue); color: #fff; }
+    .clear-btn,
+    .load-more {
+      border: 1px solid var(--blue);
+      border-radius: 3px;
+      background: var(--blue);
+      color: #fff;
+      box-shadow: none;
+    }
+    .clear-btn:hover,
+    .load-more:hover { filter: none; background: #075564; box-shadow: none; }
+    .summary-row { margin: 17px 0 4px; }
+    .result-count { font-size: 1.05rem; font-weight: 750; }
+    .result-count span { color: var(--blue); text-shadow: none; }
+
+    .card-grid { gap: 18px; }
+    .card-tile {
+      border: 1px solid var(--line);
+      border-radius: 3px;
+      background: #fff;
+      box-shadow: none;
+    }
+    .card-tile::after { display: none; }
+    .card-tile:hover {
+      transform: translateY(-2px);
+      border-color: #a7b9b5;
+      background: #fff;
+      box-shadow: 0 10px 26px rgba(27, 30, 34, .09);
+    }
+    .card-tile:focus-visible { outline-color: var(--blue); }
+    .image-wrap { background: #f1f2ee; }
+    .image-wrap::before,
+    .detail-image-wrap::before { display: none; animation: none; }
+    .image-fallback { background: #f1f2ee; }
+    .image-retry { border-color: var(--line); border-radius: 3px; background: #fff; color: var(--blue); }
+    .card-body { border-top: 1px solid var(--line); }
+    .card-title { font-weight: 750; }
+    .card-number { color: var(--muted); }
+    .chip,
+    .chip.reg {
+      border: 1px solid #d3dbd8;
+      border-radius: 2px;
+      background: #f8f9f6;
+      color: #425557;
+    }
+    .chip.reg { border-color: #bdd1d0; color: var(--blue); }
+    .empty-state { border-color: var(--line); border-radius: 3px; background: #fff; }
+    footer { border-color: var(--line); background: var(--wash); }
+
+    dialog {
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      background: #fff;
+      color: var(--ink);
+      box-shadow: 0 28px 70px rgba(27, 30, 34, .2);
+    }
+    dialog::backdrop { background: rgba(20, 28, 29, .58); backdrop-filter: blur(3px); }
+    .modal-head { background: #fff; }
+    .modal-kind { border-color: var(--line); border-radius: 2px; color: var(--blue); }
+    .close-btn { border-color: var(--line); background: #fff; }
+    .detail-image-wrap { border-color: var(--line); border-radius: 3px; background: #f1f2ee; box-shadow: none; }
+    .detail-image { background: #f1f2ee; }
+    .stat { border-color: var(--line); border-radius: 3px; background: #f8f9f6; }
+    .detail-section h3 { color: var(--blue); }
+    .skill-group + .skill-group { border-color: var(--line); }
+    .skill-group-title,
+    .skill-title strong,
+    .damage { color: var(--ink); }
+    .skill,
+    .skill.ability,
+    .skill.special,
+    .skill.effect,
+    .skill.rule {
+      border: 1px solid var(--line);
+      border-left: 3px solid var(--blue);
+      border-radius: 3px;
+      background: #f8f9f6;
+    }
+    .skill-badge { border-color: var(--line); background: #edf3f1; color: var(--blue); }
+    .skill-note { border-color: var(--blue); background: #eef4f2; color: #34494b; }
+    .flavor { border-color: var(--blue); background: #f3f6f3; color: #34494b; }
+    .official-link { border-color: var(--blue); border-radius: 3px; background: var(--blue); }
+    .official-link.secondary { border-color: var(--line); background: #fff; color: var(--blue); }
+    .noscript { border-color: var(--line); border-radius: 3px; background: #fff; }
+
+    @media (max-width: 760px) {
+      .filter-fields {
+        border-color: var(--line);
+        border-radius: 12px 12px 0 0;
+        background: #fff;
+        box-shadow: 0 -18px 48px rgba(27, 30, 34, .18);
+      }
+      .filter-backdrop { background: rgba(20, 28, 29, .48); backdrop-filter: none; }
+      .filter-sheet-head { background: #fff; }
+      .filter-sheet-head button { background: #fff; }
+    }
+
+    @media (max-width: 430px) {
+      .search-panel { padding: 16px; border-radius: 3px; }
+      .search-panel::before { left: 16px; }
+      .card-grid { gap: 10px; }
     }
   </style>
 </head>
